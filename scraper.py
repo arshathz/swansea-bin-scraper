@@ -6,8 +6,26 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 import time
+import os  # Required to get Render's assigned port
 
 app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return jsonify({"message": "Bin Collection API is running!"})
+
+@app.route('/get-bin-schedule', methods=['GET'])
+def get_bin_schedule():
+    """
+    API Endpoint: Get bin collection schedule for a given postcode.
+    Example: /get-bin-schedule?postcode=SA1%206RA
+    """
+    postcode = request.args.get('postcode')
+    if not postcode:
+        return jsonify({"error": "No postcode provided"}), 400
+
+    data = scrape_bin_data(postcode)
+    return jsonify(data)
 
 def scrape_bin_data(postcode):
     """
@@ -121,18 +139,7 @@ def scrape_bin_data(postcode):
 
     return collection_details
 
-@app.route('/get-bin-schedule', methods=['GET'])
-def get_bin_schedule():
-    """
-    API Endpoint: Get bin collection schedule for a given postcode.
-    Example: /get-bin-schedule?postcode=SA1%206RA
-    """
-    postcode = request.args.get('postcode')
-    if not postcode:
-        return jsonify({"error": "No postcode provided"}), 400
-
-    data = scrape_bin_data(postcode)
-    return jsonify(data)
-
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    port = int(os.environ.get("PORT", 5000))  # Render assigns a dynamic port
+    print(f"🚀 Running Flask on port {port}...")  # Debugging log
+    app.run(host="0.0.0.0", port=port, debug=True)
