@@ -1,38 +1,36 @@
 from flask import Flask, request, jsonify
 import os
 import time
-import chromedriver_autoinstaller
+import subprocess
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from webdriver_manager.chrome import ChromeDriverManager
 
 app = Flask(__name__)
 
-def setup_chrome():
+def install_chrome():
     """
-    Installs ChromeDriver and ensures a headless Chrome environment is available.
+    Installs Chromium and ChromeDriver manually.
     """
-    chromedriver_autoinstaller.install()  # ✅ Automatically installs compatible ChromeDriver
+    try:
+        print("🚀 Installing Chromium...")
+        subprocess.run(["apt-get", "update"], check=True)
+        subprocess.run(["apt-get", "install", "-y", "chromium", "chromium-driver"], check=True)
+
+        # Set environment variables for Selenium
+        os.environ["CHROME_BIN"] = "/usr/bin/chromium"
+        os.environ["PATH"] += os.pathsep + "/usr/bin/"
+
+        print("✅ Chromium installed successfully!")
+    except Exception as e:
+        print(f"❌ Failed to install Chromium: {e}")
 
 @app.route('/')
 def home():
     return jsonify({"message": "Bin Collection API is running!"})
-
-@app.route('/routes', methods=['GET'])
-def list_routes():
-    """
-    Debugging route: Lists all available API endpoints.
-    """
-    routes = []
-    for rule in app.url_map.iter_rules():
-        routes.append({
-            "endpoint": rule.endpoint,
-            "methods": list(rule.methods),
-            "route": str(rule)
-        })
-    return jsonify({"routes": routes})
 
 @app.route('/get-bin-schedule', methods=['GET'])
 def get_bin_schedule():
@@ -51,14 +49,16 @@ def scrape_bin_data(postcode):
     """
     Uses Selenium to scrape bin collection data from Swansea Council website.
     """
-    setup_chrome()  # ✅ Ensure ChromeDriver is installed
+    install_chrome()  # ✅ Ensure Chromium is installed
 
     options = webdriver.ChromeOptions()
+    options.binary_location = "/usr/bin/chromium"  # ✅ Use manually installed Chrome
     options.add_argument("--headless")  # ✅ Run without UI
     options.add_argument("--no-sandbox")  # ✅ Required for running in a container
     options.add_argument("--disable-dev-shm-usage")  # ✅ Prevents memory issues
 
-    driver = webdriver.Chrome(options=options)  # ✅ No manual path needed!
+    service = Service(ChromeDriverManager().install())
+    driver = webdriver.Chrome(service=service, options=options)
 
     collection_details = {"error": "Unknown error occurred"}
 
