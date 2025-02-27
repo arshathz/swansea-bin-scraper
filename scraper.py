@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 import os
 import time
+import shutil
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
@@ -9,6 +10,22 @@ from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 
 app = Flask(__name__)
+
+def get_chrome_binary():
+    """
+    Manually sets the Chrome binary path.
+    Render does not have Chrome installed by default.
+    """
+    possible_paths = [
+        "/usr/bin/google-chrome",  # Common Linux Chrome path
+        "/usr/bin/chromium",       # Common Linux Chromium path
+        "/usr/local/bin/chromium",
+        "/opt/google/chrome/chrome",
+    ]
+    for path in possible_paths:
+        if os.path.exists(path):
+            return path
+    return None
 
 @app.route('/')
 def home():
@@ -31,12 +48,17 @@ def scrape_bin_data(postcode):
     """
     Uses Selenium to scrape bin collection data from Swansea Council website.
     """
+    chrome_path = get_chrome_binary()
+    if not chrome_path:
+        return {"error": "Chrome binary not found. Ensure Chrome is installed on Render."}
+
     options = webdriver.ChromeOptions()
-    options.add_argument("--headless")  # ✅ Run in headless mode
+    options.binary_location = chrome_path  # ✅ Manually specify Chrome binary
+    options.add_argument("--headless")  # ✅ Run without UI
     options.add_argument("--no-sandbox")  # ✅ Required for running in a container
     options.add_argument("--disable-dev-shm-usage")  # ✅ Prevents memory issues
 
-    # ✅ Use Selenium Manager to auto-detect the correct ChromeDriver
+    # ✅ Use WebDriver Manager to auto-install correct ChromeDriver
     service = Service(ChromeDriverManager().install())
     driver = webdriver.Chrome(service=service, options=options)
 
