@@ -28,7 +28,8 @@ def get_driver():
         driver = webdriver.Chrome(service=service, options=chrome_options)
         return driver
     except Exception as e:
-        return {"error": f"Failed to start WebDriver: {str(e)}"}
+        print(f"❌ WebDriver Error: {e}")
+        return None  # Return None instead of a dictionary
 
 def scrape_bin_data(postcode):
     """Scrapes Swansea bin collection data for a given postcode."""
@@ -36,8 +37,8 @@ def scrape_bin_data(postcode):
 
     # ✅ Initialize WebDriver
     driver = get_driver()
-    if isinstance(driver, dict):  # If there's an error, return it
-        return driver
+    if driver is None:  # If WebDriver failed to start, return error
+        return {"error": "Failed to start WebDriver. Chrome may not be installed."}
 
     try:
         # 🌍 Navigate to Swansea bin collection search page
@@ -73,4 +74,35 @@ def scrape_bin_data(postcode):
         # 📝 Parse the extracted text into structured data
         try:
             collection_details["address"] = data[data.index("Address:") + 1]
-           
+            collection_details["collection_day"] = data[data.index("Collection Day:") + 1]
+            collection_details["next_pink_collection"] = data[data.index("Next Pink Week Collection:") + 1]
+            collection_details["next_green_collection"] = data[data.index("Next Green Week Collection:") + 1]
+        except ValueError:
+            collection_details["error"] = "Could not parse bin collection details."
+
+    except Exception as e:
+        collection_details["error"] = f"Scraping error: {str(e)}"
+
+    finally:
+        if driver:
+            driver.quit()  # ✅ Close the browser safely
+
+    return collection_details
+
+@app.route("/")
+def home():
+    return jsonify({"message": "Bin Collection API is running!"})
+
+@app.route("/get-bin-schedule", methods=["GET"])
+def get_bin_schedule():
+    """API endpoint to fetch bin collection schedule based on postcode."""
+    postcode = request.args.get("postcode", "").strip()
+
+    if not postcode:
+        return jsonify({"error": "Postcode is required"}), 400
+
+    data = scrape_bin_data(postcode)
+    return jsonify(data)
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, debug=True)
