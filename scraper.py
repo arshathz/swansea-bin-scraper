@@ -1,22 +1,20 @@
 from flask import Flask, request, jsonify
 import os
 import time
-import subprocess
+import chromedriver_autoinstaller
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
 
 app = Flask(__name__)
 
 def setup_chrome():
     """
-    Sets up a headless Chrome environment on Render.
+    Installs ChromeDriver and ensures a headless Chrome environment is available.
     """
-    os.environ["CHROME_BIN"] = "/opt/render/project/.render/chrome/chrome"
-    os.environ["PATH"] += os.pathsep + "/opt/render/project/.render/chromedriver"
+    chromedriver_autoinstaller.install()  # ✅ Automatically installs compatible ChromeDriver
 
 @app.route('/')
 def home():
@@ -53,16 +51,14 @@ def scrape_bin_data(postcode):
     """
     Uses Selenium to scrape bin collection data from Swansea Council website.
     """
-    setup_chrome()  # ✅ Set up Chrome environment
+    setup_chrome()  # ✅ Ensure ChromeDriver is installed
 
     options = webdriver.ChromeOptions()
-    options.binary_location = os.environ.get("CHROME_BIN")  # ✅ Use prebuilt Chrome
     options.add_argument("--headless")  # ✅ Run without UI
     options.add_argument("--no-sandbox")  # ✅ Required for running in a container
     options.add_argument("--disable-dev-shm-usage")  # ✅ Prevents memory issues
 
-    service = Service(ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service, options=options)
+    driver = webdriver.Chrome(options=options)  # ✅ No manual path needed!
 
     collection_details = {"error": "Unknown error occurred"}
 
