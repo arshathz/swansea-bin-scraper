@@ -7,30 +7,37 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-# ✅ Use environment variables for Chrome & ChromeDriver
+# ✅ Use manually installed Chrome & ChromeDriver paths
 CHROME_PATH = os.getenv("CHROME_PATH", "/usr/local/bin/chrome")
 CHROMEDRIVER_PATH = os.getenv("CHROMEDRIVER_PATH", "/usr/local/bin/chromedriver")
 
 # ✅ Configure Chrome Options
 chrome_options = webdriver.ChromeOptions()
 chrome_options.binary_location = CHROME_PATH
-chrome_options.add_argument("--headless")  # Ensure Chrome runs in headless mode
+chrome_options.add_argument("--headless")  # Run in headless mode
 chrome_options.add_argument("--no-sandbox")
 chrome_options.add_argument("--disable-dev-shm-usage")
 
 # Initialize Flask app
 app = Flask(__name__)
 
+def get_driver():
+    """Returns a WebDriver instance with the correct Chrome setup."""
+    try:
+        service = Service(CHROMEDRIVER_PATH)
+        driver = webdriver.Chrome(service=service, options=chrome_options)
+        return driver
+    except Exception as e:
+        return {"error": f"Failed to start WebDriver: {str(e)}"}
+
 def scrape_bin_data(postcode):
     """Scrapes Swansea bin collection data for a given postcode."""
     collection_details = {}
 
     # ✅ Initialize WebDriver
-    try:
-        service = Service(CHROMEDRIVER_PATH)
-        driver = webdriver.Chrome(service=service, options=chrome_options)
-    except Exception as e:
-        return {"error": f"Failed to start WebDriver: {str(e)}"}
+    driver = get_driver()
+    if isinstance(driver, dict):  # If there's an error, return it
+        return driver
 
     try:
         # 🌍 Navigate to Swansea bin collection search page
@@ -66,37 +73,4 @@ def scrape_bin_data(postcode):
         # 📝 Parse the extracted text into structured data
         try:
             collection_details["address"] = data[data.index("Address:") + 1]
-            collection_details["collection_day"] = data[data.index("Collection Day:") + 1]
-            collection_details["next_pink_collection"] = data[data.index("Next Pink Week Collection:") + 1]
-            collection_details["next_green_collection"] = data[data.index("Next Green Week Collection:") + 1]
-        except ValueError:
-            collection_details["error"] = "Could not parse bin collection details."
-
-    except Exception as e:
-        collection_details["error"] = f"Scraping error: {str(e)}"
-
-    finally:
-        driver.quit()  # ✅ Close the browser
-
-    return collection_details
-
-
-@app.route("/")
-def home():
-    return jsonify({"message": "Bin Collection API is running!"})
-
-
-@app.route("/get-bin-schedule", methods=["GET"])
-def get_bin_schedule():
-    """API endpoint to fetch bin collection schedule based on postcode."""
-    postcode = request.args.get("postcode", "").strip()
-
-    if not postcode:
-        return jsonify({"error": "Postcode is required"}), 400
-
-    data = scrape_bin_data(postcode)
-    return jsonify(data)
-
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+           
