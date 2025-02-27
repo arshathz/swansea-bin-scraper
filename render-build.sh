@@ -1,27 +1,25 @@
 #!/bin/bash
 
-# 1️⃣ Install Google Chrome (Portable)
-echo "🚀 Installing Portable Chrome..."
-mkdir -p /opt/chrome
-wget -q -O /opt/chrome/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-dpkg -x /opt/chrome/chrome.deb /opt/chrome/
-ln -sf /opt/chrome/opt/google/chrome/chrome /usr/local/bin/chrome
+echo "🚀 Installing Google Chrome & ChromeDriver..."
 
-# 2️⃣ Install ChromeDriver (Manually Specify Version)
-echo "🚀 Installing ChromeDriver..."
-CHROMEDRIVER_VERSION=$(curl -sS https://chromedriver.storage.googleapis.com/LATEST_RELEASE)
-wget -q "https://chromedriver.storage.googleapis.com/$CHROMEDRIVER_VERSION/chromedriver_linux64.zip" -O /opt/chrome/chromedriver.zip
-unzip /opt/chrome/chromedriver.zip -d /opt/chrome/
-mv /opt/chrome/chromedriver /usr/local/bin/chromedriver
+# ✅ Install Chrome (Headless Version)
+apt-get update && apt-get install -y wget unzip
+wget -q -O /tmp/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+dpkg -i /tmp/chrome.deb || apt-get -fy install
+ln -sf /usr/bin/google-chrome /usr/local/bin/chrome
+
+# ✅ Install ChromeDriver (Matching Chrome Version)
+CHROME_VERSION=$(google-chrome --version | awk '{print $3}')
+CHROMEDRIVER_VERSION=$(curl -sS "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_VERSION")
+wget -q "https://chromedriver.storage.googleapis.com/$CHROMEDRIVER_VERSION/chromedriver_linux64.zip" -O /tmp/chromedriver.zip
+unzip -q /tmp/chromedriver.zip -d /usr/local/bin/
 chmod +x /usr/local/bin/chromedriver
 
-# 3️⃣ Set Chrome Environment Variables
-echo "✅ Setting up Chrome environment..."
+# ✅ Export Paths
 export CHROME_PATH="/usr/local/bin/chrome"
 export CHROMEDRIVER_PATH="/usr/local/bin/chromedriver"
 
-# 4️⃣ Install Python dependencies
-echo "🚀 Installing Python dependencies..."
+# ✅ Install Python dependencies
 pip install -r requirements.txt
 
-echo "✅ Setup complete!"
+echo "✅ Chrome & ChromeDriver Installed Successfully!"
