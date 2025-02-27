@@ -11,17 +11,12 @@ from webdriver_manager.chrome import ChromeDriverManager
 
 app = Flask(__name__)
 
-def install_chrome():
+def setup_chrome():
     """
-    Installs Google Chrome on Render.
+    Sets up a headless Chrome environment on Render.
     """
-    try:
-        print("🚀 Installing Google Chrome...")
-        subprocess.run(["apt-get", "update"], check=True)
-        subprocess.run(["apt-get", "install", "-y", "chromium"], check=True)
-        print("✅ Chrome installed successfully!")
-    except Exception as e:
-        print(f"❌ Failed to install Chrome: {e}")
+    os.environ["CHROME_BIN"] = "/opt/render/project/.render/chrome/chrome"
+    os.environ["PATH"] += os.pathsep + "/opt/render/project/.render/chromedriver"
 
 @app.route('/')
 def home():
@@ -58,13 +53,13 @@ def scrape_bin_data(postcode):
     """
     Uses Selenium to scrape bin collection data from Swansea Council website.
     """
-    install_chrome()  # ✅ Install Chrome before starting Selenium
+    setup_chrome()  # ✅ Set up Chrome environment
 
     options = webdriver.ChromeOptions()
-    options.binary_location = "/usr/bin/chromium"  # ✅ Set Chrome path
+    options.binary_location = os.environ.get("CHROME_BIN")  # ✅ Use prebuilt Chrome
     options.add_argument("--headless")  # ✅ Run without UI
     options.add_argument("--no-sandbox")  # ✅ Required for running in a container
-    options.add_argument("--disable-dev-shm-usage")  # ✅ Prevents memory errors
+    options.add_argument("--disable-dev-shm-usage")  # ✅ Prevents memory issues
 
     service = Service(ChromeDriverManager().install())
     driver = webdriver.Chrome(service=service, options=options)
