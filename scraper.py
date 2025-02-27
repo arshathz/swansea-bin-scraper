@@ -1,14 +1,27 @@
 from flask import Flask, request, jsonify
+import os
+import time
+import subprocess
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
-import time
-import os
 
 app = Flask(__name__)
+
+def install_chrome():
+    """
+    Installs Google Chrome on Render.
+    """
+    try:
+        print("🚀 Installing Google Chrome...")
+        subprocess.run(["apt-get", "update"], check=True)
+        subprocess.run(["apt-get", "install", "-y", "chromium"], check=True)
+        print("✅ Chrome installed successfully!")
+    except Exception as e:
+        print(f"❌ Failed to install Chrome: {e}")
 
 @app.route('/')
 def home():
@@ -16,6 +29,9 @@ def home():
 
 @app.route('/routes', methods=['GET'])
 def list_routes():
+    """
+    Debugging route: Lists all available API endpoints.
+    """
     routes = []
     for rule in app.url_map.iter_rules():
         routes.append({
@@ -28,7 +44,7 @@ def list_routes():
 @app.route('/get-bin-schedule', methods=['GET'])
 def get_bin_schedule():
     """
-    Fetches the bin collection schedule for a given postcode.
+    API Endpoint: Get bin collection schedule for a given postcode.
     Example: /get-bin-schedule?postcode=SA1%206RA
     """
     postcode = request.args.get('postcode')
@@ -40,14 +56,15 @@ def get_bin_schedule():
 
 def scrape_bin_data(postcode):
     """
-    Uses Selenium to interact with the Swansea Council bin collection page inside an iframe.
+    Uses Selenium to scrape bin collection data from Swansea Council website.
     """
-    print("🚀 Starting WebDriver...")
+    install_chrome()  # ✅ Install Chrome before starting Selenium
 
     options = webdriver.ChromeOptions()
-    options.add_argument("--headless")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
+    options.binary_location = "/usr/bin/chromium"  # ✅ Set Chrome path
+    options.add_argument("--headless")  # ✅ Run without UI
+    options.add_argument("--no-sandbox")  # ✅ Required for running in a container
+    options.add_argument("--disable-dev-shm-usage")  # ✅ Prevents memory errors
 
     service = Service(ChromeDriverManager().install())
     driver = webdriver.Chrome(service=service, options=options)
